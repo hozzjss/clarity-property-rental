@@ -2,10 +2,11 @@
 (define-non-fungible-token property (buff 50))
 
 ;; Contract parties
-(define-constant renter 'ST2H4YT31W0XX5VNHG95KAE7AWDJ2V5JN047CBBH)
-(define-constant owner 'ST1TXPQCP005M76WZN7KXJ83V289WP098GKG6F2VS)
+(define-constant renter 'ST1P65RPJD6Z12PHFZ0SSMAGGFTP05P5Q98XFH565)
+(define-constant property-rental-contract 'ST1P65RPJD6Z12PHFZ0SSMAGGFTP05P5Q98XFH565.property-rental)
+(define-constant owner 'ST2VN90YREJPP7MPYSXYQ8RMGT2Q9VSAEJ1FH459T)
 
-;; Different types of properties
+;; Different types of property types
 (define-constant electronics u1)
 (define-constant properties u2)
 (define-constant other u3)
@@ -24,6 +25,10 @@
 (define-data-var renter-accepted-terms bool false)
 ;; the contract would be for valid for 12 month
 (define-data-var contract-duration uint u12)
+(define-data-var contract-in-effect bool false)
+(define-data-var contract-in-effect-since uint u0)
+
+
 
 
 (define-data-var rent uint u100)
@@ -47,20 +52,21 @@
          contract-duration: (var-get contract-duration)
       }))
 
-(define-public (negotiate-rent (new-rent-price uint) (new-contract-duration uint) (new-deposit uint)) 
+(define-public (negotiate-rent (new-rent uint) (new-contract-duration uint) (new-deposit uint)) 
    (begin 
    (reset-terms-agreements) 
    (if 
       (or (is-renter) (is-owner))
       (ok 
          (begin 
-            (var-set rent new-rent-price)
+            (var-set rent new-rent)
             (var-set deposit new-deposit)
             (var-set contract-duration new-contract-duration)
             ))
       (err negotiator-is-not-a-party))))
 
 (define-private (is-owner) (is-eq tx-sender owner))
+
 (define-private (is-renter) (is-eq tx-sender renter))
 
 
@@ -71,15 +77,12 @@
             (var-set owner-accepted-terms true) 
             (var-set renter-accepted-terms true))
          (let ((isAccepted (check-parties-agreements))) 
-            (if (not isAccepted) 
-               (ok 1) 
-               (ok 2)))
+            (if isAccepted 
+               (ok (seal-contract)) 
+               (ok false)))
       )
       (err negotiator-is-not-a-party)))
 
-
-;; (define-private rent-expired 
-;;    ()))
 
    
 (define-private (reset-terms-agreements) 
@@ -99,6 +102,37 @@
          transferred true
          failed false))
 
-(define-private (transfer-deposit)
-   (transfer-funds (var-get deposit) owner renter))
 
+;; deposit does not go to either party
+;; rather it stays in the contract
+(define-private (transfer-deposit)
+   (transfer-funds (var-get deposit) property-rental-contract renter))
+
+(define-private (transfer-rent)
+   (transfer-funds (var-get rent) owner renter))
+
+
+(define-private (get-current-time) 
+   (default-to u0 (get-block-info? time block-height)))
+      
+
+
+(define-private (contract-is-unchangeable) 
+   (and 
+      (var-get contract-in-effect)))
+
+(define-private (seal-contract) 
+   (begin
+      (var-set contract-in-effect true)
+      (let 
+         ((deposit-transfer-successful (transfer-deposit)) 
+         (rent-transfer-successful (transfer-rent)))
+      (if (and deposit-transfer-successful rent-transfer-successful) 
+         (begin
+            (var-set contract-in-effect true)
+            (var-set contract-in-effect-since (get-current-time))
+            ;; until the end of the contract 
+            ;; the property is owned by the contract
+            (nft-transfer? property name owner property-rental-contract)
+            true)
+         false))))

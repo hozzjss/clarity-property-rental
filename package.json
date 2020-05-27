@@ -11,7 +11,8 @@
     "node": ">=10"
   },
   "scripts": {
-    "test": "mocha",
+    "test:integration": "mocha 'test/integration'",
+    "test:unit": "mocha 'test/unit'",
     "test:watch": "mocha --watch"
   },
   "devDependencies": {
@@ -25,6 +26,8 @@
   },
   "dependencies": {
     "@blockstack/clarity": "^0.1.16",
-    "@blockstack/clarity-native-bin": "^0.1.16"
+    "@blockstack/clarity-native-bin": "^0.1.16",
+    "@blockstack/stacks-transactions": "^0.4.4",
+    "bn.js": "^5.1.2"
   }
 }

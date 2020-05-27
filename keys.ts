@@ -1,0 +1,8 @@
+export default {
+  ownerSecret:
+    "25e1aee98f7e0a0ca39e1015316fc3596c7ea42d78082c7f5dbd8bf59227fddd01",
+  ownerAddress: "ST2VN90YREJPP7MPYSXYQ8RMGT2Q9VSAEJ1FH459T",
+  renterSecret:
+    "e9a269401216fb4c3e49804edeb366a306672630c9eaf8cf20fa8440b3a5aa5901",
+  renterAddress: "ST1P65RPJD6Z12PHFZ0SSMAGGFTP05P5Q98XFH565",
+};

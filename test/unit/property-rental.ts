@@ -5,6 +5,7 @@ import {
   Result,
 } from "@blockstack/clarity";
 import { assert } from "chai";
+import keys from "../../keys";
 
 describe("Property rental contract test suite", () => {
   let propertyRentalClient: Client;
@@ -13,7 +14,7 @@ describe("Property rental contract test suite", () => {
   before(async () => {
     provider = await ProviderRegistry.createProvider();
     propertyRentalClient = new Client(
-      "SP3GWX3NE58KXHESRYE4DYQ1S31PQJTCRXB3PE9SB.property-rental",
+      keys.renterAddress + ".property-rental",
       "property-rental",
       provider
     );
@@ -34,10 +35,27 @@ describe("Property rental contract test suite", () => {
       });
       const receipt = await propertyRentalClient.submitQuery(query);
       const result = Result.unwrap(receipt);
-      assert.include(
-        result.toString(),
-        "ST1TXPQCP005M76WZN7KXJ83V289WP098GKG6F2VS"
-      );
+      assert.include(result.toString(), keys.ownerAddress);
+    });
+
+    it(`should help both parties negotiate terms,
+      and the contract cannot be signed until both parties
+      agree to the terms`, async () => {
+      const negotiate = async (
+        negotiator: string,
+        newRent: number,
+        newDuration: number,
+        newDeposit: number
+      ) => {
+        const transaction = propertyRentalClient.createTransaction({
+          method: {
+            args: [`${newRent}`, `${newDuration}`, `${newDeposit}`],
+            name: "negotiate-rent",
+          },
+        });
+
+        return await propertyRentalClient.submitTransaction(transaction);
+      };
     });
   });
   after(async () => {
