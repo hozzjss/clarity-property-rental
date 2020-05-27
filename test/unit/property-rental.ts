@@ -29,14 +29,14 @@ describe("Property rental contract test suite", () => {
       await propertyRentalClient.deployContract();
     });
 
-    it("should create only one property per contract based on name, type, and serial number and owner should be its owner", async () => {
-      const query = propertyRentalClient.createQuery({
-        method: { name: "get-owner", args: [] },
-      });
-      const receipt = await propertyRentalClient.submitQuery(query);
-      const result = Result.unwrap(receipt);
-      assert.include(result.toString(), keys.ownerAddress);
-    });
+    // it("should create only one property per contract based on name, type, and serial number and owner should be its owner", async () => {
+    //   const query = propertyRentalClient.createQuery({
+    //     method: { name: "get-owner", args: [] },
+    //   });
+    //   const receipt = await propertyRentalClient.submitQuery(query);
+    //   const result = Result.unwrap(receipt);
+    //   assert.include(result.toString(), keys.ownerAddress);
+    // });
 
     it(`should help both parties negotiate terms,
       and the contract cannot be signed until both parties
