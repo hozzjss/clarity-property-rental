@@ -13,8 +13,8 @@ describe("Property rental contract test suite", () => {
   before(async () => {
     provider = await ProviderRegistry.createProvider();
     propertyRentalClient = new Client(
-      "SP3GWX3NE58KXHESRYE4DYQ1S31PQJTCRXB3PE9SB.propertyRental",
-      "propertyRental",
+      "SP3GWX3NE58KXHESRYE4DYQ1S31PQJTCRXB3PE9SB.property-rental",
+      "property-rental",
       provider
     );
   });
@@ -28,29 +28,18 @@ describe("Property rental contract test suite", () => {
       await propertyRentalClient.deployContract();
     });
 
-    it(
-      "should create only one property per contract based on name, type, and serial number"
-    );
-
-    it("should return 'hello world'", async () => {
+    it("should create only one property per contract based on name, type, and serial number and owner should be its owner", async () => {
       const query = propertyRentalClient.createQuery({
-        method: { name: "say-hi", args: [] },
+        method: { name: "get-owner", args: [] },
       });
       const receipt = await propertyRentalClient.submitQuery(query);
-      const result = Result.unwrapString(receipt);
-      assert.equal(result, "hello world");
-    });
-
-    it("should echo number", async () => {
-      const query = propertyRentalClient.createQuery({
-        method: { name: "echo-number", args: ["123"] },
-      });
-      const receipt = await propertyRentalClient.submitQuery(query);
-      const result = Result.unwrapInt(receipt);
-      assert.equal(result, 123);
+      const result = Result.unwrap(receipt);
+      assert.include(
+        result.toString(),
+        "ST1TXPQCP005M76WZN7KXJ83V289WP098GKG6F2VS"
+      );
     });
   });
-
   after(async () => {
     await provider.close();
   });
