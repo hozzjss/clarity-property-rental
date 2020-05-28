@@ -92,12 +92,10 @@
 ;; only if contract is valid and not in effect
 ;; this means that only contracts that have not been
 ;; deliberately expired or have not been signed yet
+;; only in negotiations will terms be changeable
 (define-public (negotiate-rent (new-rent uint) (new-contract-duration uint) (new-deposit uint)) 
   (if 
-    (and
-      (not (is-contract-in-effect))
-      (var-get is-contract-valid)
-      (is-a-party))
+    (can-negotiate)
       (begin 
           (reset-terms-agreements)
           (ok 
@@ -111,26 +109,26 @@
 
 
 
-
+;; Both renter and owner can accept terms
+;; if contract is valid and is not yet in effect
 (define-public (accept-terms) 
-  (if (is-a-party)
+  (if (can-negotiate)
     (begin 
         (if (is-owner) 
           (var-set owner-accepted-terms true) 
           (var-set renter-accepted-terms true))
-        (let ((isAccepted (check-parties-agreements))) 
-          (if isAccepted 
+          (if (check-parties-agreements) 
               (ok (seal-contract)) 
               (ok false)))
-    )
     (err is-not-a-party)))
 
-
+;; util
 (define-private (is-owner) (is-eq tx-sender owner))
 
 (define-private (is-renter) (is-eq tx-sender renter))
 (define-private (can-negotiate) 
   (and 
+    (var-get is-contract-valid)
     (not (is-contract-in-effect))
     (is-a-party)))
 
@@ -174,10 +172,7 @@
             (nft-transfer? property name owner property-rental-contract) true) false))))
 ;;; Payment handling
 (define-private (transfer-funds (amount uint) (recipient principal) (sender principal))
-  (match 
-    (stx-transfer? amount recipient sender) 
-        transferred true
-        failed false))
+  (unwrap-panic (stx-transfer? amount recipient sender)))
 
 ;;; Payment handlers
 ;; deposit does not go to either party
@@ -262,6 +257,7 @@
 ;; A method for owner to withdraw their rent funds
 (define-public (withdraw-month-rent (month uint) (year uint)) 
   (if (and 
+    (not (and (is-eq (get-current-month) month) (is-eq (get-current-year) year)))
     (is-month-paid month year)
     (not (is-month-withdrawn month year)))
   (let ((transferred (handle-withdraw-rent)))
@@ -350,17 +346,16 @@
         (leap-year-days-seconds (* (days-to-seconds leap-year-days))))
         ;; add up the years and leap years' days' seconds
         ;; and we're golden!
-        (+ years-seconds leap-year-days-seconds)
-        )))
+        (+ years-seconds leap-year-days-seconds))))
 
 ;;; Contract validation
 ;; What would constitute a breach of contract
 ;; would be only if renter fails to pay month's rent
 ;; before `grace-peried` passes
-(define-public (is-renter-in-breach-of-contract) 
+(define-public (is-renter-in-breach-of-contract)
   (ok (is-past-grace-period)))
 
-(define-public (extend-grace-period (extension uint)) 
+(define-public (extend-grace-period (extension uint))
   (if (is-owner)
     (ok 
       (var-set grace-period 
