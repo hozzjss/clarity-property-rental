@@ -57,7 +57,7 @@
 ;; This is the time of the next rent-payment
 ;; it would be extended to another month 
 ;; if the renter payed the rent 
-(define-data-var next-rent-payment-time uint u0)
+(define-map latest-unpaid-month ((index uint)) ((month uint) (year uint)))
 (define-map paid-months ((month uint) (year uint)) ((paid bool) (withdrawn bool)))
 
 
@@ -155,6 +155,8 @@
 ;; this function is only called when both parties 
 ;; accept the negotiated contract terms
 
+(define-private (set-last-unpaid-month (month uint) (year uint)) 
+  (map-set latest-unpaid-month ((index u0)) ((month month) (year year))))
 
 (define-private (seal-contract) 
   (begin
@@ -166,6 +168,7 @@
             (var-set contract-in-effect-since (get-current-time))
             (var-set is-contract-signed true)
             (reset-terms-agreements)
+            (set-last-unpaid-month (get-next-month) (get-next-month-year (get-current-month)))
             ;; until the end of the contract 
             ;; as long as the contract is 
             ;; the property is owned by the contract
@@ -213,16 +216,16 @@
   (set-month-payment (get-current-month) (get-current-year) paid false))
 
 (define-private (set-next-month-paid (paid bool)) 
-  (set-month-payment (get-next-month) (get-next-year) paid false))
+  (set-month-payment (get-next-month) (get-next-month-year (get-current-month)) paid false))
 
 (define-private (is-month-paid (month uint) (year uint)) 
-  (default-to false (get paid (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
+  (default-to false (get paid (map-get? paid-months ((month (get-next-month)) (year year))))))
 
 (define-private (is-month-withdrawn (month uint) (year uint)) 
-  (default-to false (get withdrawn (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
+  (default-to false (get withdrawn (map-get? paid-months ((month (get-next-month)) (year year))))))
 
 (define-private (is-next-month-paid) 
-  (is-month-paid (get-next-month) (get-next-year)))
+  (is-month-paid (get-next-month) (get-next-month-year (get-current-month))))
 
 (define-private (is-current-month-paid)
   (is-month-paid (get-current-month) (get-current-year)))
@@ -272,7 +275,10 @@
 ;; it's a simple operation but I rather keeping it this way
 ;; shall the need rise to make complex stuff or something
 ;; Developer insecurity I guess xD
-(define-private (get-next-year) (+ u1 (get-current-year)))
+(define-private (get-next-month-year (current-month uint))
+  (if (< current-month u12)
+    (get-current-year)
+    (+ u1 (get-current-year))))
 
 
 ;; Rent will always be held by the contract until owner requests
@@ -282,6 +288,71 @@
 
 (define-private (handle-withdraw-rent) 
   (transfer-funds (var-get rent) tx-sender property-rental-contract))
+
+
+;;; Contract validation
+;; What would constitute a breach of contract
+;; would be only if renter fails to pay month's rent
+;; before `grace-peried` passes
+(define-public (is-renter-in-breach-of-contract)
+  (ok (is-past-grace-period)))
+
+(define-public (extend-grace-period (extension uint))
+  (if (is-owner)
+    (ok 
+      (var-set grace-period 
+        (+ (var-get grace-period) extension)))
+    (err is-not-allowed-for-renter)))
+
+;; Only for good merciful landlords
+;; Thank you for your humanity
+;; unlike this unforgiving contract
+;; The renter might waive the rent of any month whatsoever
+(define-public (waive-rent (month uint) (year uint)) 
+  (if (is-a-party)
+    (if (is-owner)
+      (if (is-past-grace-period)
+        (ok (set-month-withdrawn month year))
+      (err is-not-allowed-for-anyone))
+    (err is-not-allowed-for-renter))
+  (err is-not-a-party)))
+
+
+(define-private (is-past-grace-period) 
+  (and 
+  (not (is-current-month-paid))
+  (> (get-current-day) (var-get grace-period))))
+
+;; This contract knows no mercy
+(define-public (end-contract-on-grounds-of-breach-of-contract)
+  (if (is-owner) 
+    (if (is-past-grace-period)
+      (ok (handle-end-contract owner))
+      (err transfer-failed))
+    (err is-not-allowed-for-renter)))
+
+
+;; if one of the parties requests contract to be 
+;; expired after it'
+(define-public (expire-contract)
+  (if (is-a-party)
+    (if (not (is-contract-in-effect))
+      (ok (handle-end-contract renter))
+      (err is-not-allowed-for-anyone))
+    (err is-not-a-party)))
+
+;; if neither party expires contract
+;; no operation would be permitted
+;; until renegotiation starts again
+
+
+(define-private (handle-end-contract (deposit-receiver principal)) 
+  (begin 
+    (nft-transfer? property name property-rental-contract owner)
+    (var-set is-contract-valid false)
+    (transfer-funds (var-get deposit) property-rental-contract deposit-receiver)
+    ))
+
 
 
 ;; Time utilities
@@ -348,55 +419,6 @@
         ;; and we're golden!
         (+ years-seconds leap-year-days-seconds))))
 
-;;; Contract validation
-;; What would constitute a breach of contract
-;; would be only if renter fails to pay month's rent
-;; before `grace-peried` passes
-(define-public (is-renter-in-breach-of-contract)
-  (ok (is-past-grace-period)))
-
-(define-public (extend-grace-period (extension uint))
-  (if (is-owner)
-    (ok 
-      (var-set grace-period 
-        (+ (var-get grace-period) extension)))
-    (err is-not-allowed-for-renter)))
-
-
-(define-private (is-past-grace-period) 
-  (and 
-  (not (is-current-month-paid))
-  (> (get-current-day) (var-get grace-period))))
-
-;; This contract knows no mercy
-(define-public (end-contract-on-grounds-of-breach-of-contract)
-  (if (is-owner) 
-    (if (is-past-grace-period)
-      (ok (handle-end-contract owner))
-      (err transfer-failed))
-    (err is-not-allowed-for-renter)))
-
-
-;; if one of the parties requests contract to be 
-;; expired after it'
-(define-public (expire-contract)
-  (if (is-a-party)
-    (if (not (is-contract-in-effect))
-      (ok (handle-end-contract renter))
-      (err is-not-allowed-for-anyone))
-    (err is-not-a-party)))
-
-;; if neither party expires contract
-;; no operation would be permitted
-;; until renegotiation starts again
-
-
-(define-private (handle-end-contract (deposit-receiver principal)) 
-  (begin 
-    (nft-transfer? property name property-rental-contract owner)
-    (var-set is-contract-valid false)
-    (transfer-funds (var-get deposit) property-rental-contract deposit-receiver)
-    ))
 
 ;; this should be the property
 (nft-mint? property name owner)
