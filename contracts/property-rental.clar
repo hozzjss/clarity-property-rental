@@ -133,13 +133,6 @@
     (var-get renter-accepted-terms) 
     (var-get owner-accepted-terms)))
 
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-;; Finished 
-;; Negotiations 
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-
 
 ;; Contract seal
 ;; This acts as a sealing function
@@ -178,15 +171,6 @@
 ;; First month would be transferred directly to owner
 (define-private (transfer-first-month-rent)
   (transfer-funds (var-get rent) owner renter))
-
-
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-;; Finished 
-;; Contract seal 
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-
 
 
 ;; Rent management
@@ -287,16 +271,6 @@
   (transfer-funds (var-get rent) tx-sender property-rental-contract))
 
 
-
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-;; Finished 
-;; Rent Management 
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-
-
-
 ;; Time utilities
 ;; Currently this is the only way to get time
 ;; it is okay and is not bad at all
@@ -381,13 +355,6 @@
   (and 
   (not (is-current-month-paid))
   (> (get-current-day) (var-get grace-period))))
-
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
-;; Finished 
-;; Contract validation 
-;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;
 
 
 ;; this should be the property
