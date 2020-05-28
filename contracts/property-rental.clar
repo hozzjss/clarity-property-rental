@@ -49,7 +49,7 @@
 ;; it would be extended to another month 
 ;; if the renter payed the rent 
 (define-data-var next-rent-payment-time uint u0)
-(define-map paid-months ((month uint) (year uint)) ((paid bool)))
+(define-map paid-months ((month uint) (year uint)) ((paid bool) (withdrawn bool)))
 
 
 
@@ -207,14 +207,14 @@
             (err transfer-failed))))
       (err is-not-a-party)))
 
-(define-private (set-month-paid (month uint) (year uint) (paid bool)) 
-  (map-set paid-months ((month month) (year year)) ((paid paid))))
+(define-private (set-month-paid (month uint) (year uint) (paid bool) (withdrawn bool)) 
+  (map-set paid-months ((month month) (year year)) ((paid paid) (withdrawn withdrawn))))
 
 (define-private (set-current-month-paid (paid bool))
-  (set-month-paid (get-current-month) (get-current-year) paid))
+  (set-month-paid (get-current-month) (get-current-year) paid false))
 
 (define-private (set-next-month-paid (paid bool)) 
-  (set-month-paid (get-next-month) (get-next-year) paid))
+  (set-month-paid (get-next-month) (get-next-year) paid false))
 
 (define-private (is-month-paid (month uint) (year uint)) 
   (default-to false (get paid (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
@@ -233,9 +233,9 @@
     u1)))
 
 
-;; a renter can withdraw next month rent deposit
+;; a renter can refund next month rent deposit
 ;; before the beginning of the month
-(define-public (withdraw-next-month-funds) 
+(define-public (refund-next-month-funds) 
     (if 
     (and 
       (is-contract-in-effect)
@@ -245,12 +245,13 @@
           (is-next-month-paid)
           (is-current-month-paid))
         (let 
-          ((transferred-rent (handle-deposit-rent)))
+          ((transferred-rent (handle-withdraw-rent)))
           (if transferred-rent
             (ok (set-next-month-paid false))
             (err transfer-failed)))
         (err transfer-failed))
       (err is-not-a-party)))
+
 
 
 ;; it's a simple operation but I rather keeping it this way
@@ -264,7 +265,7 @@
 (define-private (handle-deposit-rent)
   (transfer-funds (var-get rent) property-rental-contract renter))
 
-(define-private (handle-widraw-rent) 
+(define-private (handle-withdraw-rent) 
   (transfer-funds (var-get rent) tx-sender property-rental-contract))
 
 
