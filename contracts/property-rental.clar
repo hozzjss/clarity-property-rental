@@ -20,6 +20,9 @@
 (define-constant name "Hozz's computer")
 (define-constant id u1)
 (define-constant type electronics)
+;; 15 days of grace period till renter pays rent
+;; after that, it would be considered breach of contract
+(define-data-var grace-period uint u15)
 
 
 ;; contract monetary details
@@ -78,7 +81,7 @@
 (define-public (negotiate-rent (new-rent uint) (new-contract-duration uint) (new-deposit uint)) 
   (if 
     (and 
-      (or (is-renter) (is-owner)))
+      (is-a-party))
       (begin 
           (reset-terms-agreements)
           (ok 
@@ -92,7 +95,7 @@
 
 
 (define-public (accept-terms) 
-  (if (or (is-renter) (is-owner))
+  (if (is-a-party)
     (begin 
         (if (is-owner) 
           (var-set owner-accepted-terms true) 
@@ -111,7 +114,9 @@
 (define-private (can-negotiate) 
   (and 
     (not (is-contract-in-effect))
-    (or (is-renter) (is-owner))))
+    (is-a-party)))
+
+(define-private (is-a-party) (or (is-renter) (is-owner)))
 
 
 
@@ -186,23 +191,39 @@
 ;; A renter can deposit rent for the next month
 ;; Money is stored in the contract until the owner requests them
 ;; The money would be frozen until the beginning of the next month
-(define-public (deposit-next-month-rent)
+(define-public (deposit-rent)
   (if 
     (and 
       (is-contract-in-effect)
       (is-renter))
-      (begin 
+      (begin
         (let 
           ((transferred-rent (handle-deposit-rent)))
           (if transferred-rent 
-            (begin 
-              (ok (set-next-month-paid)))
+              (if
+                (not (is-current-month-paid))
+                (ok (set-current-month-paid))
+                (ok (set-next-month-paid)))
             (err transfer-failed))))
       (err is-not-a-party)))
 
-(define-private (set-next-month-paid) 
-  (map-set paid-months ((month (get-next-month)) (year (get-next-year))) ((paid true))))
+(define-private (set-month-paid (month uint) (year uint)) 
+  (map-set paid-months ((month month) (year year)) ((paid true))))
 
+(define-private (set-current-month-paid)
+  (set-month-paid (get-current-month) (get-current-year)))
+
+(define-private (set-next-month-paid) 
+  (set-month-paid (get-next-month) (get-next-year)))
+
+(define-private (is-month-paid (month uint) (year uint)) 
+  (default-to false (get paid (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
+
+(define-private (is-next-month-paid) 
+  (is-month-paid (get-next-month) (get-next-year)))
+
+(define-private (is-current-month-paid)
+  (is-month-paid (get-current-month) (get-current-year)))
 
 
 (define-private (get-next-month) 
@@ -216,11 +237,12 @@
 ;; Developer insecurity I guess xD
 (define-private (get-next-year) (+ u1 (get-current-year)))
 
+
+;; Rent will always be held by the contract until owner requests
+;; a withdrawal of rent money
 (define-private (handle-deposit-rent)
   (transfer-funds (var-get rent) property-rental-contract renter))
 
-;; (define-private (deposit-rent) 
-;;   (let ((current-month get-current-month)) true))
 
 
 
