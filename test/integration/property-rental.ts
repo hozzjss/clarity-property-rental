@@ -44,7 +44,7 @@ const acceptTerms = async (
 
 describe("status contract test suite", async () => {
   before(async () => {
-    const fee = new BigNum(4500);
+    const fee = new BigNum(15000);
     console.log("deploy contract");
     var transaction = await makeSmartContractDeploy({
       contractName,
