@@ -58,6 +58,9 @@
 ;; it would be extended to another month 
 ;; if the renter payed the rent 
 (define-map latest-unpaid-month ((index uint)) ((month uint) (year uint)))
+;; month and year are required for cross year rents
+;; Paid is for renter whether they have paid or not
+;; and withdrawn is for owner whether they have withdrawn rent or not
 (define-map paid-months ((month uint) (year uint)) ((paid bool) (withdrawn bool)))
 
 
