@@ -14,6 +14,8 @@
 
 
 (define-constant is-not-a-party 1)
+(define-constant is-not-allowed-for-renter 2)
+(define-constant is-not-allowed-for-owner 3)
 (define-constant transfer-failed 2)
 
 ;; Property constant details
@@ -22,6 +24,7 @@
 (define-constant type electronics)
 ;; 15 days of grace period till renter pays rent
 ;; after that, it would be considered breach of contract
+;; except if owner decides to extend that grace periid
 (define-data-var grace-period uint u15)
 
 
@@ -205,7 +208,7 @@
                 (ok (set-current-month-paid true))
                 (ok (set-next-month-paid true)))
             (err transfer-failed))))
-      (err is-not-a-party)))
+      (err is-not-allowed-for-owner)))
 
 (define-private (set-month-payment (month uint) (year uint) (paid bool) (withdrawn bool)) 
   (map-set paid-months ((month month) (year year)) ((paid paid) (withdrawn withdrawn))))
@@ -253,7 +256,7 @@
             (ok (set-next-month-paid false))
             (err transfer-failed)))
         (err transfer-failed))
-      (err is-not-a-party)))
+      (err is-not-allowed-for-owner)))
 
 ;; A method for owner to withdraw their rent funds
 (define-public (withdraw-month-rent (month uint) (year uint)) 
@@ -297,18 +300,31 @@
 ;; Time utilities
 ;; Currently this is the only way to get time
 ;; it is okay and is not bad at all
+;; u1590626084 this is the timestamp I use for development
 (define-private (get-current-time) 
   (default-to u1590626084 (get-block-info? time block-height)))
 
 (define-private (get-current-year) 
   (+ u1970 (get-years-since-1970)))
 
+(define-private (get-current-day) 
+  (let 
+    (
+      (seconds-after-start-of-month 
+        (- 
+          (get-current-time)
+          (get-years-seconds-since-1970-till-jan-first)
+        ;; subtract one other wise we'd go a month back
+          (* (- (get-current-month) u1) u30 u60 u60 u24))))
+    ;; Clarity floors floating points so this will fix it 
+    (seconds-to-days seconds-after-start-of-month)))
+
 (define-private (get-current-month) 
   (let 
-    ((seconds-since-start-of-year 
+    ((seconds-after-start-of-year 
       (- (get-current-time) (get-years-seconds-since-1970-till-jan-first))))
     ;; Clarity floors floating points so this will fix it 
-    (+ (/ (seconds-to-days seconds-since-start-of-year) u30) u1)))
+    (+ (/ (seconds-to-days seconds-after-start-of-year) u30) u1)))
 
 (define-private (years-to-seconds (years uint)) 
   (* (days-to-seconds years) u365))
@@ -345,6 +361,35 @@
         ;; and we're golden!
         (+ years-seconds leap-year-days-seconds)
         )))
+
+;;; Contract validation
+;; What would constitute a breach of contract
+;; would be only if renter fails to pay month's rent
+;; before `grace-peried` passes
+(define-public (is-renter-in-breach-of-contract) 
+  (ok (is-past-grace-period)))
+
+(define-public (extend-grace-period (extension uint)) 
+  (if (is-owner)
+    (ok 
+      (var-set grace-period 
+        (+ (var-get grace-period) extension)))
+    (err is-not-allowed-for-renter)))
+
+
+(define-private (is-past-grace-period) 
+  (and 
+  (not (is-current-month-paid))
+  (> (get-current-day) (var-get grace-period))))
+
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;; Finished 
+;; Contract validation 
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+
+
 ;; this should be the property
 (nft-mint? property name owner)
 

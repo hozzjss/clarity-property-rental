@@ -1,13 +1,9 @@
 const BigNum = require("bn.js");
 import {
   makeContractCall,
-  TransactionVersion,
-  ChainID,
   makeSmartContractDeploy,
-  bufferCV,
   StacksTestnet,
   broadcastTransaction,
-  ContractCallOptions,
   uintCV,
   makeContractSTXPostCondition,
   FungibleConditionCode,

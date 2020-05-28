@@ -69,6 +69,17 @@ describe("Property rental contract test suite", () => {
       const result = Result.unwrap(receipt);
       assert.equal(result, "u" + (new Date().getMonth() + 1));
     });
+    it("Should get current day", async () => {
+      const query = propertyRentalClient.createQuery({
+        method: {
+          args: [],
+          name: "get-current-day",
+        },
+      });
+      const receipt = await propertyRentalClient.submitQuery(query);
+      const result = Result.unwrap(receipt);
+      assert.equal(result, "u" + new Date().getDate());
+    });
   });
   after(async () => {
     await provider.close();
