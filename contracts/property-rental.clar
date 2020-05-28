@@ -202,19 +202,19 @@
           (if transferred-rent 
               (if
                 (not (is-current-month-paid))
-                (ok (set-current-month-paid))
-                (ok (set-next-month-paid)))
+                (ok (set-current-month-paid true))
+                (ok (set-next-month-paid true)))
             (err transfer-failed))))
       (err is-not-a-party)))
 
-(define-private (set-month-paid (month uint) (year uint)) 
-  (map-set paid-months ((month month) (year year)) ((paid true))))
+(define-private (set-month-paid (month uint) (year uint) (paid bool)) 
+  (map-set paid-months ((month month) (year year)) ((paid paid))))
 
-(define-private (set-current-month-paid)
-  (set-month-paid (get-current-month) (get-current-year)))
+(define-private (set-current-month-paid (paid bool))
+  (set-month-paid (get-current-month) (get-current-year) paid))
 
-(define-private (set-next-month-paid) 
-  (set-month-paid (get-next-month) (get-next-year)))
+(define-private (set-next-month-paid (paid bool)) 
+  (set-month-paid (get-next-month) (get-next-year) paid))
 
 (define-private (is-month-paid (month uint) (year uint)) 
   (default-to false (get paid (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
@@ -232,6 +232,27 @@
       (+ current-month u1)
     u1)))
 
+
+;; a renter can withdraw next month rent deposit
+;; before the beginning of the month
+(define-public (withdraw-next-month-funds) 
+    (if 
+    (and 
+      (is-contract-in-effect)
+      (is-renter))
+      (if 
+        (and 
+          (is-next-month-paid)
+          (is-current-month-paid))
+        (let 
+          ((transferred-rent (handle-deposit-rent)))
+          (if transferred-rent
+            (ok (set-next-month-paid false))
+            (err transfer-failed)))
+        (err transfer-failed))
+      (err is-not-a-party)))
+
+
 ;; it's a simple operation but I rather keeping it this way
 ;; shall the need rise to make complex stuff or something
 ;; Developer insecurity I guess xD
@@ -243,6 +264,8 @@
 (define-private (handle-deposit-rent)
   (transfer-funds (var-get rent) property-rental-contract renter))
 
+(define-private (handle-widraw-rent) 
+  (transfer-funds (var-get rent) tx-sender property-rental-contract))
 
 
 

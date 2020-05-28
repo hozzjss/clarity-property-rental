@@ -66,8 +66,8 @@ describe("Property rental contract test suite", () => {
         },
       });
       const receipt = await propertyRentalClient.submitQuery(query);
-      const result = Result.unwrapUInt(receipt);
-      assert.equal(result, new Date().getMonth() + 1);
+      const result = Result.unwrap(receipt);
+      assert.equal(result, "u" + (new Date().getMonth() + 1));
     });
   });
   after(async () => {
