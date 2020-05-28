@@ -2,9 +2,9 @@
 (define-non-fungible-token property (buff 50))
 
 ;; Contract parties
-(define-constant renter 'ST1YKV7F764MEZ0Z82J39F4VSVGR65QC9SQMTV7VS)
-(define-constant property-rental-contract 'ST1YKV7F764MEZ0Z82J39F4VSVGR65QC9SQMTV7VS.property-rental)
-(define-constant owner 'ST1N751QV61G634N29SJ6FFFQXM03SWDB3AEAPQY)
+(define-constant renter 'ST4FXHP5KEGYRQWVJ68KHB44W6645KJBCD8G0V0E)
+(define-constant property-rental-contract 'ST4FXHP5KEGYRQWVJ68KHB44W6645KJBCD8G0V0E.property-rental)
+(define-constant owner 'ST1JX27D915SK2W2YF8WVKSV4S39ZMEFHWA45NQ59)
 
 ;; Different types of property types
 (define-constant electronics u1)
@@ -396,8 +396,9 @@
 ;; Currently this is the only way to get time
 ;; it is okay and is not bad at all
 ;; u1590626084 this is the timestamp I use for development
+;; as unit tests cannot access any blocks
 (define-private (get-current-time) 
-  (default-to u1590626084 (get-block-info? time (- block-height u1))))
+  (default-to u1590626084 (get-block-info? time block-height)))
 
 (define-private (get-current-year) 
   (+ u1970 (get-years-since-1970)))

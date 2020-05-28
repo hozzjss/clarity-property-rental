@@ -20,38 +20,41 @@ import { PostCondition } from "@blockstack/stacks-transactions/lib/postcondition
 const contractName = "property-rental";
 const codeBody = fs.readFileSync("./contracts/property-rental.clar").toString();
 
-const acceptTerms = async (
-  partyKey: string,
-  nonce: number,
-  conditions: PostCondition[]
-) => {
-  const transaction = await makeContractCall({
-    contractAddress: keys.renterAddress,
-    contractName,
-    functionName: "accept-terms",
-    functionArgs: [],
-    fee: new BigNum(300),
-    senderKey: partyKey,
-    nonce: new BigNum(nonce),
-    network,
-    postConditions: conditions,
+describe("status contract test suite", async () => {
+  let acceptTerms;
+  before(async () => {
+    acceptTerms = async (
+      partyKey: string,
+      nonce: number,
+      conditions: PostCondition[]
+    ) => {
+      const transaction = await makeContractCall({
+        contractAddress: keys.renterAddress,
+        contractName,
+        functionName: "accept-terms",
+        functionArgs: [],
+        fee: new BigNum(300),
+        senderKey: partyKey,
+        // nonce: new BigNum(nonce),
+        network,
+        postConditions: conditions,
+      });
+
+      var result = await broadcastTransaction(transaction, network);
+      await delay();
+      console.log(result);
+    };
   });
 
-  var result = await broadcastTransaction(transaction, network);
-  await delay();
-  console.log(result);
-};
-
-describe("status contract test suite", async () => {
-  before(async () => {
-    const fee = new BigNum(15000);
+  it(`should deploy contract`, async () => {
+    const fee = new BigNum(15300);
     console.log("deploy contract");
     var transaction = await makeSmartContractDeploy({
       contractName,
       codeBody,
       fee,
       senderKey: keys.renterSecret,
-      nonce: new BigNum(0),
+      // nonce: new BigNum(0),
       network,
     });
     console.log(await broadcastTransaction(transaction, network));
@@ -81,7 +84,7 @@ describe("status contract test suite", async () => {
         ],
         fee: new BigNum(500),
         senderKey: negotiatorKey,
-        nonce: new BigNum(nonce),
+        // nonce: new BigNum(nonce),
         network,
       });
 
@@ -139,7 +142,7 @@ describe("status contract test suite", async () => {
         keys.renterAddress,
         contractName,
         FungibleConditionCode.Equal,
-        new BigNum(5000)
+        new BigNum(100)
       ),
     ]);
 
