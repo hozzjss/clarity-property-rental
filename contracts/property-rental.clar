@@ -14,6 +14,7 @@
 
 
 (define-constant is-not-a-party 1)
+(define-constant transfer-failed 2)
 
 ;; Property constant details
 (define-constant name "Hozz's computer")
@@ -183,14 +184,40 @@
 ;; Rent management
 
 ;; A renter can deposit rent for the next month
+;; Money is stored in the contract until the owner requests them
+;; The money would be frozen until the beginning of the next month
 (define-public (deposit-next-month-rent)
   (if 
     (and 
       (is-contract-in-effect)
       (is-renter))
-      (ok 1)
+      (begin 
+        (let 
+          ((transferred-rent (handle-deposit-rent)))
+          (if transferred-rent 
+            (begin 
+              (ok (set-next-month-paid)))
+            (err transfer-failed))))
       (err is-not-a-party)))
 
+(define-private (set-next-month-paid) 
+  (map-set paid-months ((month (get-next-month)) (year (get-next-year))) ((paid true))))
+
+
+
+(define-private (get-next-month) 
+  (let ((current-month (get-current-month)))
+    (if (< current-month u12) 
+      (+ current-month u1)
+    u1)))
+
+;; it's a simple operation but I rather keeping it this way
+;; shall the need rise to make complex stuff or something
+;; Developer insecurity I guess xD
+(define-private (get-next-year) (+ u1 (get-current-year)))
+
+(define-private (handle-deposit-rent)
+  (transfer-funds (var-get rent) property-rental-contract renter))
 
 ;; (define-private (deposit-rent) 
 ;;   (let ((current-month get-current-month)) true))
