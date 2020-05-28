@@ -12,9 +12,9 @@ import * as fs from "fs";
 
 const delay = (ms = 10000) => new Promise((r) => setTimeout(r, ms));
 
-const STACKS_API_URL = "http://127.0.0.1:20443";
+// const STACKS_API_URL = "https://sidecar.staging.blockstack.xyz";
 const network = new StacksTestnet();
-network.coreApiUrl = STACKS_API_URL;
+// network.coreApiUrl = STACKS_API_URL;
 import keys from "../../keys";
 import { PostCondition } from "@blockstack/stacks-transactions/lib/postcondition";
 const contractName = "property-rental";
@@ -93,6 +93,7 @@ describe("status contract test suite", async () => {
     console.log(`Renter: I think the property is worth 50
     I'm renting it for 36 months 
     so you gotta give me a bargain here`);
+    await delay(10000);
 
     await negotiate(keys.renterSecret, 1, 50, 36, 50);
     await delay(1000);
@@ -100,14 +101,14 @@ describe("status contract test suite", async () => {
     console.log(`Owner: You're driving a hard bargain`);
     console.log(`Owner: this should be fair!!`);
 
-    await negotiate(keys.ownerSecret, 0, 90, 36, 90);
+    await negotiate(keys.ownerSecret, 1, 90, 36, 90);
 
     console.log(`Renter: That does sound fair great I accept the terms`);
     await acceptTerms(keys.renterSecret, 2, []);
     await delay();
 
     console.log("Owner: Alright that was pretty good enjoy your rental!");
-    await acceptTerms(keys.ownerSecret, 1, [
+    await acceptTerms(keys.ownerSecret, 0, [
       makeContractSTXPostCondition(
         keys.renterAddress,
         contractName,
@@ -122,7 +123,7 @@ describe("status contract test suite", async () => {
   });
 
   it("Should not complete the contract until both agree to terms", async () => {
-    await acceptTerms(keys.ownerSecret, 2, [
+    await acceptTerms(keys.ownerSecret, 1, [
       makeContractSTXPostCondition(
         keys.renterAddress,
         contractName,
@@ -133,12 +134,12 @@ describe("status contract test suite", async () => {
 
     await delay();
 
-    await acceptTerms(keys.renterSecret, 3, [
+    await acceptTerms(keys.renterSecret, 1, [
       makeContractSTXPostCondition(
         keys.renterAddress,
         contractName,
         FungibleConditionCode.Equal,
-        new BigNum(50)
+        new BigNum(5000)
       ),
     ]);
 

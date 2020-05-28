@@ -2,9 +2,9 @@
 (define-non-fungible-token property (buff 50))
 
 ;; Contract parties
-(define-constant renter 'ST1P65RPJD6Z12PHFZ0SSMAGGFTP05P5Q98XFH565)
-(define-constant property-rental-contract 'ST1P65RPJD6Z12PHFZ0SSMAGGFTP05P5Q98XFH565.property-rental)
-(define-constant owner 'ST2VN90YREJPP7MPYSXYQ8RMGT2Q9VSAEJ1FH459T)
+(define-constant renter 'ST1YKV7F764MEZ0Z82J39F4VSVGR65QC9SQMTV7VS)
+(define-constant property-rental-contract 'ST1YKV7F764MEZ0Z82J39F4VSVGR65QC9SQMTV7VS.property-rental)
+(define-constant owner 'ST1N751QV61G634N29SJ6FFFQXM03SWDB3AEAPQY)
 
 ;; Different types of property types
 (define-constant electronics u1)
@@ -51,6 +51,10 @@
 ;; these signatures would then be nullified
 (define-data-var owner-accepted-terms bool false)
 (define-data-var renter-accepted-terms bool false)
+
+;; Contract cancellation requests here
+(define-data-var owner-requested-cancellation bool false)
+(define-data-var renter-requested-cancellation bool false)
 
 
 ;; Rent managemnet storage
@@ -314,7 +318,7 @@
 (define-public (waive-rent (month uint) (year uint)) 
   (if (is-a-party)
     (if (is-owner)
-      (if (is-past-grace-period)
+      (if (is-contract-in-effect)
         (ok (set-month-withdrawn month year))
       (err is-not-allowed-for-anyone))
     (err is-not-allowed-for-renter))
@@ -355,6 +359,36 @@
     (var-set is-contract-valid false)
     (transfer-funds (var-get deposit) property-rental-contract deposit-receiver)
     ))
+
+
+;; Contract cancellation
+;; In case for example the need of both people to drop this contract
+;; and create another one or they're just not into the contract any more
+;; any tokens would be destroyed
+
+(define-public (request-cancellation) 
+  (set-cancellation-requested true))
+(define-public (abort-cancellation) 
+  (set-cancellation-requested false))
+
+
+(define-private (set-cancellation-requested (is-requested bool))
+  (if (is-a-party)
+    (if (is-contract-in-effect)
+      (if (is-both-submitted-cancellation-requests)
+        ;; if both agree to the cancellation
+        (ok (handle-end-contract renter))
+        (if (is-owner)
+          (ok (var-set owner-requested-cancellation is-requested))
+          (ok (var-set renter-requested-cancellation is-requested))))
+      (err is-not-allowed-for-anyone))
+    (err is-not-a-party)))
+
+
+(define-private (is-both-submitted-cancellation-requests) 
+  (and 
+    (var-get owner-requested-cancellation)
+    (var-get owner-requested-cancellation)))
 
 
 
