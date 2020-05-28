@@ -14,9 +14,10 @@
 
 
 (define-constant is-not-a-party 1)
-(define-constant is-not-allowed-for-renter 2)
-(define-constant is-not-allowed-for-owner 3)
 (define-constant transfer-failed 2)
+(define-constant is-not-allowed-for-renter 3)
+(define-constant is-not-allowed-for-owner 4)
+(define-constant is-not-allowed-for-anyone 5)
 
 ;; Property constant details
 (define-constant name "Hozz's computer")
@@ -40,6 +41,11 @@
 ;; this would hold the time the contract was signed
 (define-data-var contract-in-effect-since uint u0)
 
+;; Contract can be signed once and only once
+;; then it can be renewed or expired
+(define-data-var is-contract-signed bool false)
+(define-data-var is-contract-valid bool true)
+
 ;; this represents a signature of both renter and owner
 ;; if one of them renegotiated after the other accepted
 ;; these signatures would then be nullified
@@ -61,8 +67,10 @@
 ;; this should indicate if the contract is in effect
 ;; and has not been breached
 (define-private (is-contract-in-effect) 
-  (> 
-    (var-get contract-in-effect-since) (get-current-time)))
+  (and 
+  (var-get is-contract-valid)
+  (var-get is-contract-signed)
+  (> (+ (var-get contract-in-effect-since) (* (var-get contract-duration) u60 u60 u24 u30)) (get-current-time))))
 
 
 ;; Rental details getter
@@ -151,6 +159,8 @@
       (if (and deposit-transfer-successful rent-transfer-successful) 
           (begin
             (var-set contract-in-effect-since (get-current-time))
+            (var-set is-contract-signed true)
+            (reset-terms-agreements)
             ;; until the end of the contract 
             ;; as long as the contract is 
             ;; the property is owned by the contract
@@ -276,7 +286,7 @@
 ;; it is okay and is not bad at all
 ;; u1590626084 this is the timestamp I use for development
 (define-private (get-current-time) 
-  (default-to u1590626084 (get-block-info? time block-height)))
+  (default-to u1590626084 (get-block-info? time (- block-height u1))))
 
 (define-private (get-current-year) 
   (+ u1970 (get-years-since-1970)))
@@ -356,6 +366,35 @@
   (not (is-current-month-paid))
   (> (get-current-day) (var-get grace-period))))
 
+;; This contract knows no mercy
+(define-public (end-contract-on-grounds-of-breach-of-contract)
+  (if (is-owner) 
+    (if (is-past-grace-period)
+      (ok (handle-end-contract owner))
+      (err transfer-failed))
+    (err is-not-allowed-for-renter)))
+
+
+;; if one of the parties requests contract to be 
+;; expired after it'
+(define-public (expire-contract)
+  (if (is-a-party)
+    (if (not (is-contract-in-effect))
+      (ok (handle-end-contract renter))
+      (err is-not-allowed-for-anyone))
+    (err is-not-a-party)))
+
+;; if neither party expires contract
+;; no operation would be permitted
+;; until renegotiation starts again
+
+
+(define-private (handle-end-contract (deposit-receiver principal)) 
+  (begin 
+    (nft-transfer? property name property-rental-contract owner)
+    (var-set is-contract-valid false)
+    (transfer-funds (var-get deposit) property-rental-contract deposit-receiver)
+    ))
 
 ;; this should be the property
 (nft-mint? property name owner)
