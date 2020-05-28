@@ -207,17 +207,20 @@
             (err transfer-failed))))
       (err is-not-a-party)))
 
-(define-private (set-month-paid (month uint) (year uint) (paid bool) (withdrawn bool)) 
+(define-private (set-month-payment (month uint) (year uint) (paid bool) (withdrawn bool)) 
   (map-set paid-months ((month month) (year year)) ((paid paid) (withdrawn withdrawn))))
 
 (define-private (set-current-month-paid (paid bool))
-  (set-month-paid (get-current-month) (get-current-year) paid false))
+  (set-month-payment (get-current-month) (get-current-year) paid false))
 
 (define-private (set-next-month-paid (paid bool)) 
-  (set-month-paid (get-next-month) (get-next-year) paid false))
+  (set-month-payment (get-next-month) (get-next-year) paid false))
 
 (define-private (is-month-paid (month uint) (year uint)) 
   (default-to false (get paid (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
+
+(define-private (is-month-withdrawn (month uint) (year uint)) 
+  (default-to false (get withdrawn (map-get? paid-months ((month (get-next-month)) (year (get-next-year)))))))
 
 (define-private (is-next-month-paid) 
   (is-month-paid (get-next-month) (get-next-year)))
@@ -252,7 +255,19 @@
         (err transfer-failed))
       (err is-not-a-party)))
 
+;; A method for owner to withdraw their rent funds
+(define-public (withdraw-month-rent (month uint) (year uint)) 
+  (if (and 
+    (is-month-paid month year)
+    (not (is-month-withdrawn month year)))
+  (let ((transferred (handle-withdraw-rent)))
+    (if transferred 
+      (ok (set-month-withdrawn month year))
+      (err transfer-failed)))
+  (err transfer-failed)))
 
+(define-private (set-month-withdrawn (month uint) (year uint)) 
+  (set-month-payment month year true true))
 
 ;; it's a simple operation but I rather keeping it this way
 ;; shall the need rise to make complex stuff or something
