@@ -13,7 +13,7 @@
 
 
 
-(define-constant negotiator-is-not-a-party 1)
+(define-constant is-not-a-party 1)
 
 ;; Property constant details
 (define-constant name "Hozz's computer")
@@ -45,6 +45,7 @@
 ;; it would be extended to another month 
 ;; if the renter payed the rent 
 (define-data-var next-rent-payment-time uint u0)
+(define-map paid-months ((month uint) (year uint)) ((paid bool)))
 
 
 
@@ -71,7 +72,7 @@
     }))
 
 
-
+;; Contract Negotiations
 ;; Owner and renter can negotiate through this function
 (define-public (negotiate-rent (new-rent uint) (new-contract-duration uint) (new-deposit uint)) 
   (if 
@@ -85,7 +86,7 @@
                 (var-set deposit new-deposit)
                 (var-set contract-duration new-contract-duration)
                 )))
-    (err negotiator-is-not-a-party)))
+    (err is-not-a-party)))
 
 
 
@@ -100,9 +101,8 @@
               (ok (seal-contract)) 
               (ok false)))
     )
-    (err negotiator-is-not-a-party)))
+    (err is-not-a-party)))
 
-;; Private utility functions
 
 (define-private (is-owner) (is-eq tx-sender owner))
 
@@ -124,42 +124,139 @@
     (var-get renter-accepted-terms) 
     (var-get owner-accepted-terms)))
 
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;; Finished 
+;; Negotiations 
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
 
+
+;; Contract seal
+;; This acts as a sealing function
+;; After this function is executed successfully
+;; contract would be valid until the end of the duration
+;; or until the renter breaches contract
+;; this function is only called when both parties 
+;; accept the negotiated contract terms
+
+
+(define-private (seal-contract) 
+  (begin
+    (let 
+      ((deposit-transfer-successful (transfer-deposit)) 
+      (rent-transfer-successful (transfer-first-month-rent)))
+      (if (and deposit-transfer-successful rent-transfer-successful) 
+          (begin
+            (var-set contract-in-effect-since (get-current-time))
+            ;; until the end of the contract 
+            ;; as long as the contract is 
+            ;; the property is owned by the contract
+            (nft-transfer? property name owner property-rental-contract) true) false))))
+;;; Payment handling
 (define-private (transfer-funds (amount uint) (recipient principal) (sender principal))
   (match 
     (stx-transfer? amount recipient sender) 
         transferred true
         failed false))
 
-
+;;; Payment handlers
 ;; deposit does not go to either party
 ;; rather it stays in the contract
 (define-private (transfer-deposit)
   (transfer-funds (var-get deposit) property-rental-contract renter))
 
-(define-private (transfer-rent)
+;; First month would be transferred directly to owner
+(define-private (transfer-first-month-rent)
   (transfer-funds (var-get rent) owner renter))
 
 
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;; Finished 
+;; Contract seal 
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+
+
+
+;; Rent management
+
+;; A renter can deposit rent for the next month
+(define-public (deposit-next-month-rent)
+  (if 
+    (and 
+      (is-contract-in-effect)
+      (is-renter))
+      (ok 1)
+      (err is-not-a-party)))
+
+
+;; (define-private (deposit-rent) 
+;;   (let ((current-month get-current-month)) true))
+
+
+
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+;; Finished 
+;; Rent Management 
+;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;
+
+
+
+;; Time utilities
+;; Currently this is the only way to get time
+;; it is okay and is not bad at all
 (define-private (get-current-time) 
-  (default-to u0 (get-block-info? time block-height)))
-      
+  (default-to u1590626084 (get-block-info? time block-height)))
+
+(define-private (get-current-year) 
+  (+ u1970 (get-years-since-1970)))
+
+(define-private (get-current-month) 
+  (let 
+    ((seconds-since-start-of-year 
+      (- (get-current-time) (get-years-seconds-since-1970-till-jan-first))))
+    ;; Clarity floors floating points so this will fix it 
+    (+ (/ (seconds-to-days seconds-since-start-of-year) u30) u1)))
+
+(define-private (years-to-seconds (years uint)) 
+  (* (days-to-seconds years) u365))
 
 
+(define-private (days-to-seconds (days uint)) 
+  (* days u24 u60 u60))
 
-(define-private (seal-contract) 
-  (begin
-    (let 
-        ((deposit-transfer-successful (transfer-deposit)) 
-        (rent-transfer-successful (transfer-rent)))
-    (if (and deposit-transfer-successful rent-transfer-successful) 
-        (begin
-          (var-set contract-in-effect-since (get-current-time))
-          ;; until the end of the contract 
-          ;; the property is owned by the contract
-          (nft-transfer? property name owner property-rental-contract)
-          true)
-        false))))
+(define-private (seconds-to-days (days uint)) 
+  (/ days u24 u60 u60))
+  
+(define-private (get-years-since-1970) 
+  (/ (seconds-to-days (get-current-time)) u365))
 
+;; since we don't have much support for time control
+;; I have made this monstrosity
+(define-private (get-years-seconds-since-1970-till-jan-first)
+  (let 
+    (
+      ;; first get the years since 1970
+      ;; for example in 2020 it would be 50 years
+      (years-since-1970 (get-years-since-1970))
+
+      ;; then we oughta not forget about leap year days
+      ;; as we don't have floating point this is better
+      (leap-year-days (/ (get-years-since-1970) u4)))
+
+      (let
+        ;; then get the seconds from Jan 1970 till 365 * years later
+        ((years-seconds (* (days-to-seconds years-since-1970) u365))
+        ;; and their leap days seconds
+        (leap-year-days-seconds (* (days-to-seconds leap-year-days))))
+        ;; add up the years and leap years' days' seconds
+        ;; and we're golden!
+        (+ years-seconds leap-year-days-seconds)
+        )))
 ;; this should be the property
 (nft-mint? property name owner)
+

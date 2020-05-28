@@ -57,6 +57,18 @@ describe("Property rental contract test suite", () => {
         return await propertyRentalClient.submitTransaction(transaction);
       };
     });
+
+    it("Should get current month", async () => {
+      const query = propertyRentalClient.createQuery({
+        method: {
+          args: [],
+          name: "get-current-month",
+        },
+      });
+      const receipt = await propertyRentalClient.submitQuery(query);
+      const result = Result.unwrapUInt(receipt);
+      assert.equal(result, new Date().getMonth() + 1);
+    });
   });
   after(async () => {
     await provider.close();

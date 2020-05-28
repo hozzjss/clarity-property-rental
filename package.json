@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@blockstack/clarity": "^0.1.16",
+    "@blockstack/clarity-cli": "^0.1.16",
     "@blockstack/clarity-native-bin": "^0.1.16",
     "@blockstack/stacks-transactions": "^0.4.4",
     "bn.js": "^5.1.2"
