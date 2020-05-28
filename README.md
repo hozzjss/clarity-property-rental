@@ -10,6 +10,7 @@ If you had an asset (property, device, anything) that you want to rent and you w
 3. During contract duration, if renter breaches contract by not paying after the beginning of the month till a defined grace period, the owner is given the control to either renew or end contract on grounds of breach of contract, this would guarantee the rights of the owner, the owner can extend the grace period too (for example a good landlord during the corona crisis), and can waive the month's fees, but if the month ended without payment and the owner did not waive the fees, the renter would be in debt for the owner, if the owner did not request an extension of grace period nor to end contract
 4. You're a real life hero if you read all that really, I'm sorry I put you through this xD.
 5. If the contract's duration ended both parties can choose to renegotiate or if one of them wishes expire contract.
+6. Any party could request contract to be cancelled, and it would be cancelled only if both parties decide to cancel the contract.
 
 To run tests you can use
 
