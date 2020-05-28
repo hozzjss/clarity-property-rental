@@ -81,7 +81,7 @@
 
 
 ;; Rental details getter
-(define-read-only (get-details) 
+(define-public (get-details) 
   (ok 
     {
       name: name, 
