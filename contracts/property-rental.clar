@@ -88,10 +88,15 @@
 
 
 ;; Contract Negotiations
-;; Owner and renter can negotiate through this function
+;; Owner and renter can negotiate terms through this function
+;; only if contract is valid and not in effect
+;; this means that only contracts that have not been
+;; deliberately expired or have not been signed yet
 (define-public (negotiate-rent (new-rent uint) (new-contract-duration uint) (new-deposit uint)) 
   (if 
-    (and 
+    (and
+      (not (is-contract-in-effect))
+      (var-get is-contract-valid)
       (is-a-party))
       (begin 
           (reset-terms-agreements)
@@ -102,6 +107,8 @@
                 (var-set contract-duration new-contract-duration)
                 )))
     (err is-not-a-party)))
+
+
 
 
 
