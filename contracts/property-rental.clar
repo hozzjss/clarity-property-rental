@@ -3,8 +3,9 @@
 
 ;; Contract parties
 (define-constant renter 'ST4FXHP5KEGYRQWVJ68KHB44W6645KJBCD8G0V0E)
-(define-constant property-rental-contract 'ST4FXHP5KEGYRQWVJ68KHB44W6645KJBCD8G0V0E.property-rental)
 (define-constant owner 'ST1JX27D915SK2W2YF8WVKSV4S39ZMEFHWA45NQ59)
+
+(define-constant property-rental-contract (as-contract tx-sender))
 
 ;; Different types of property types
 (define-constant electronics u1)
